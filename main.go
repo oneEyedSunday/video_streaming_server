@@ -33,6 +33,7 @@ func main() {
 	}
 
 	go func() {
+		fmt.Printf("Booting up server on: %s \n", server.Addr)
 		err := server.ListenAndServe()
 		if errors.Is(err, http.ErrServerClosed) {
 			fmt.Printf("server closed\n")
@@ -41,4 +42,6 @@ func main() {
 		}
 		cancelCtx()
 	}()
+
+	<-ctx.Done()
 }
