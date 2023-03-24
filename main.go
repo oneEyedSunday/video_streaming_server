@@ -1,33 +1,44 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
-	"os"
-)
 
-func getRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("got / request\n")
-	io.WriteString(w, "This is my website!\n")
-}
+	"github.com/oneeyedsunday/video_streaming_server/api"
+)
 
 func getHealth(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "{ \"message\": \"Server is up and running\" }")
 }
 
+const keyServerAddr = "serverAddr"
+
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/video/:id", getRoot)
+	mux.HandleFunc("/api/video/", api.Stream)
 	mux.HandleFunc("/api", getHealth)
 
-	err := http.ListenAndServe(":3000", mux)
-
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Printf("server closed\n")
-	} else if err != nil {
-		fmt.Printf("error starting server: %s\n", err)
-		os.Exit(1)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	server := &http.Server{
+		Addr:    ":3000",
+		Handler: mux,
+		BaseContext: func(l net.Listener) context.Context {
+			ctx = context.WithValue(ctx, keyServerAddr, l.Addr().String())
+			return ctx
+		},
 	}
+
+	go func() {
+		err := server.ListenAndServe()
+		if errors.Is(err, http.ErrServerClosed) {
+			fmt.Printf("server closed\n")
+		} else if err != nil {
+			fmt.Printf("error starting server: %s\n", err)
+		}
+		cancelCtx()
+	}()
 }
