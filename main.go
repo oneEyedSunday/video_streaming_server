@@ -19,6 +19,7 @@ const keyServerAddr = "serverAddr"
 
 func main() {
 	mux := http.NewServeMux()
+	// Wrap handlers in request and response logger middlewares
 	mux.HandleFunc("/api/video/", api.Stream)
 	mux.HandleFunc("/api", getHealth)
 
