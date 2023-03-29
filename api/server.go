@@ -45,24 +45,34 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 	videoId := strings.TrimPrefix(r.URL.Path, "/api/video/")
 	fmt.Printf("requesting video with id: %s", videoId)
 
-	err, bytes, end, videoSize, contentLength := video.Foo(videoId, rV)
-
+	err, v := video.GetVideoById(videoId)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		msg := fmt.Sprintf("{ \"message\": \"%s\" }", err)
-		io.WriteString(w, msg)
+		handleError(w, err, http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("X-Server-Name", "VideoStreamServer")
-	w.Header().Set("Accept-Range", "bytes")
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", contentLength))
-	w.Header().Set("Content-Range", fmt.Sprintf("bytes %v-%v/%v", rV[0], end, videoSize))
-	w.Header().Set("Content-Type", "video/mp4")
-	w.WriteHeader(http.StatusPartialContent)
-	w.Write(bytes)
+	err, bytes, end, videoSize, contentLength := video.SeekVideoFileByRange(v, rV)
+
+	if err != nil {
+		handleError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	handleChunkedResponse(w, bytes, contentLength, fmt.Sprintf("bytes %v-%v/%v", rV[0], end, videoSize), "video/mp4")
 }
 
-func writeResponseToBody() {}
+func handleError(w http.ResponseWriter, err error, statusCode int) {
+	w.WriteHeader(http.StatusBadRequest)
+	msg := fmt.Sprintf("{ \"message\": \"%s\" }", err)
+	io.WriteString(w, msg)
+}
 
-func writeHeaders() {}
+func handleChunkedResponse(w http.ResponseWriter, b []byte, l uint64, r string, t string) {
+	w.Header().Set("X-Server-Name", "VideoStreamServer")
+	w.Header().Set("Accept-Range", "bytes")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", l))
+	w.Header().Set("Content-Range", r)
+	w.Header().Set("Content-Type", t)
+	w.WriteHeader(http.StatusPartialContent)
+	w.Write(b)
+}

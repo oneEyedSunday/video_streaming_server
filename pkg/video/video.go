@@ -24,15 +24,24 @@ var (
 )
 
 // 1MB
-const chunkSize = 1024 * 1024 * 600
+const chunkSize = 1024 * 1024
 
-func Foo(id string, seekRange types.RangeValue) (err error, bytes []byte, end uint64, videoSize int64, contentLength uint64) {
+func GetChunkSize() int {
+	return chunkSize
+}
+
+func GetVideoById(id string) (error, *types.VideoSource) {
 	realPath := resolveFilePath(id)
 
 	if realPath == "" {
-		return errors.New("video not found"), nil, 0, 0, 0
+		return errors.New("video not found"), nil
 	}
-	file, err := os.Open(realPath)
+
+	return nil, types.NewVideoSourceFromFilePath(realPath)
+}
+
+func SeekVideoFileByRange(video *types.VideoSource, seekRange types.RangeValue) (err error, bytes []byte, end uint64, videoSize int64, contentLength uint64) {
+	file, err := os.Open(video.GetUrl())
 
 	if err != nil {
 		return handleError(err), nil, 0, 0, 0
@@ -59,16 +68,17 @@ func Foo(id string, seekRange types.RangeValue) (err error, bytes []byte, end ui
 
 	fmt.Println(seekRange)
 
-	// TODO fix this logic
+	fmt.Printf("Difference of seekRange is: %v\n", seekRange[1]-seekRange[0])
+
 	end = seekRange[1]
 
 	if seekRange[1] != 1 {
-		end = uint64(math.Min(float64(seekRange[0]+chunkSize), chunkSize) - 1)
+		end = uint64(math.Min(float64(seekRange[0]+chunkSize), float64(videoSize)) - 1)
 	}
 
 	contentLength = (end - seekRange[0]) + 1 // We add 1 byte because start and end start from 0
 
-	fmt.Println(end)
+	fmt.Printf("Raw end is: %v\n", end)
 
 	err, bytes = returnChunk(file, seekRange[0])
 

@@ -11,6 +11,9 @@ type RangeValue [2]uint64
 
 func NewRangeValue(v string) (RangeValue, error) {
 	fmt.Printf("parsing RangeValue for: %s\n", v)
+	if len(v) == 0 {
+		return RangeValue{0, 0}, errors.New("invalid value")
+	}
 	parts := strings.Split(strings.Replace(v, "bytes=", "", -1), "-")
 
 	if parts[1] == "" {
