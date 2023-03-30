@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,7 +16,9 @@ import (
 	"github.com/oneeyedsunday/video_streaming_server/pkg/video"
 )
 
-func ensureRequestIsRanged(w http.ResponseWriter, r *http.Request) (types.RangeValue, error) {
+const rangeCtxKey = "range"
+
+func ensureRequestIsRanged(w http.ResponseWriter, r *http.Request) error {
 	rValue := r.Header["Range"]
 
 	fmt.Printf("range header value is: %s\n", rValue)
@@ -23,18 +26,19 @@ func ensureRequestIsRanged(w http.ResponseWriter, r *http.Request) (types.RangeV
 	if len(strings.Trim(rValue[0], "")) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 
-		return types.RangeValue{0, 0}, errors.New("is not a range request")
+		return errors.New("is not a range request")
 	}
 
 	rv, err := types.NewRangeValue(rValue[0])
 
 	if err != nil {
-		return rv, errors.New("is not a range request")
+		return errors.New("is not a range request")
 	}
 	fmt.Printf("parse range is: %v, %v\n", rv[0], rv[1])
 
-	// TODO since this is a middleware push it into the request context
-	return rv, nil
+	*r = *r.WithContext(context.WithValue(r.Context(), rangeCtxKey, rv))
+
+	return nil
 }
 
 func Health(w http.ResponseWriter, r *http.Request) {
@@ -47,11 +51,13 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("got HTTP %s %s request\n", r.Method, r.URL.Path)
 
-	rV, err := ensureRequestIsRanged(w, r)
+	err := ensureRequestIsRanged(w, r)
 
 	if err != nil {
 		return
 	}
+
+	rV := r.Context().Value(rangeCtxKey).(types.RangeValue)
 
 	videoId := strings.TrimPrefix(r.URL.Path, "/api/video/")
 	fmt.Printf("requesting video with id: %s", videoId)
