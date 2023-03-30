@@ -7,6 +7,10 @@ import (
 	"net/http"
 	"strings"
 
+	"bytes"
+	"encoding/gob"
+	"encoding/json"
+
 	types "github.com/oneeyedsunday/video_streaming_server/internal"
 	"github.com/oneeyedsunday/video_streaming_server/pkg/video"
 )
@@ -29,7 +33,14 @@ func ensureRequestIsRanged(w http.ResponseWriter, r *http.Request) (types.RangeV
 	}
 	fmt.Printf("parse range is: %v, %v\n", rv[0], rv[1])
 
+	// TODO since this is a middleware push it into the request context
 	return rv, nil
+}
+
+func Health(w http.ResponseWriter, r *http.Request) {
+	handleJsonResponse(w, map[string]interface{}{
+		"Message": "Server is up and running",
+	})
 }
 
 func Stream(w http.ResponseWriter, r *http.Request) {
@@ -75,4 +86,25 @@ func handleChunkedResponse(w http.ResponseWriter, b []byte, l uint64, r string, 
 	w.Header().Set("Content-Type", t)
 	w.WriteHeader(http.StatusPartialContent)
 	w.Write(b)
+}
+
+func handleResponse(w http.ResponseWriter, data interface{}) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(data)
+	if err != nil {
+		return
+	}
+	w.Write(buf.Bytes())
+}
+
+func handleJsonResponse(w http.ResponseWriter, data map[string]interface{}) {
+	jsonB, err := json.Marshal(data)
+
+	if err != nil {
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/json")
+	w.Write(jsonB)
 }

@@ -4,24 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 
 	"github.com/oneeyedsunday/video_streaming_server/api"
+	my_http "github.com/oneeyedsunday/video_streaming_server/pkg/http"
 )
-
-func getHealth(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "{ \"message\": \"Server is up and running\" }")
-}
 
 const keyServerAddr = "serverAddr"
 
 func main() {
 	mux := http.NewServeMux()
-	// Wrap handlers in request and response logger middlewares
-	mux.HandleFunc("/api/video/", api.Stream)
-	mux.HandleFunc("/api", getHealth)
+	mux.HandleFunc("/api/video/", my_http.WithLoggingRequest(api.Stream))
+	mux.HandleFunc("/api", my_http.WithLoggingRequest(api.Health))
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	server := &http.Server{
