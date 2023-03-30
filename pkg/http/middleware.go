@@ -6,7 +6,7 @@ import (
 )
 
 // middleware is a function that wraps a handler to augment it with some extra functionality.
-type middleware func(http.Handler) http.Handler
+type middleware func(h func(http.ResponseWriter, *http.Request)) http.HandlerFunc
 
 func WithLoggingRequest(h func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
