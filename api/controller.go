@@ -1,8 +1,6 @@
 package api
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,33 +11,9 @@ import (
 	"encoding/json"
 
 	types "github.com/oneeyedsunday/video_streaming_server/internal"
+	my_http "github.com/oneeyedsunday/video_streaming_server/pkg/http"
 	"github.com/oneeyedsunday/video_streaming_server/pkg/video"
 )
-
-const rangeCtxKey = "range"
-
-func ensureRequestIsRanged(w http.ResponseWriter, r *http.Request) error {
-	rValue := r.Header["Range"]
-
-	fmt.Printf("range header value is: %s\n", rValue)
-
-	if len(strings.Trim(rValue[0], "")) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-
-		return errors.New("is not a range request")
-	}
-
-	rv, err := types.NewRangeValue(rValue[0])
-
-	if err != nil {
-		return errors.New("is not a range request")
-	}
-	fmt.Printf("parse range is: %v, %v\n", rv[0], rv[1])
-
-	*r = *r.WithContext(context.WithValue(r.Context(), rangeCtxKey, rv))
-
-	return nil
-}
 
 func Health(w http.ResponseWriter, r *http.Request) {
 	handleJsonResponse(w, map[string]interface{}{
@@ -51,13 +25,7 @@ func Stream(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("got HTTP %s %s request\n", r.Method, r.URL.Path)
 
-	err := ensureRequestIsRanged(w, r)
-
-	if err != nil {
-		return
-	}
-
-	rV := r.Context().Value(rangeCtxKey).(types.RangeValue)
+	rV := r.Context().Value(my_http.RangeCtxKey).(types.RangeValue)
 
 	videoId := strings.TrimPrefix(r.URL.Path, "/api/video/")
 	fmt.Printf("requesting video with id: %s", videoId)

@@ -15,7 +15,7 @@ const keyServerAddr = "serverAddr"
 
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/video/", my_http.WithLoggingRequest(http.HandlerFunc(api.Stream)))
+	mux.HandleFunc("/api/video/", my_http.EnsureRequestIsRanged(my_http.WithLoggingRequest(http.HandlerFunc(api.Stream))))
 	mux.HandleFunc("/api", my_http.WithLoggingRequest(http.HandlerFunc(api.Health)))
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
